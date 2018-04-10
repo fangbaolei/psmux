@@ -14,6 +14,7 @@ public:
     void Process(guint8* buf, int len);
     void PsProcessSaveFile(std::string DstName);
     void OnPsFrameOut(guint8* buf, int len, gint64 pts, gint64 dts);
+    int process_block(guint8* pBlock, int BlockLen, int MaxSlice);
 
 private:
     Gb28181PsMux PsMux;
@@ -82,7 +83,7 @@ void PsMuxContext::OnPsFrameOut(guint8* buf, int len, gint64 pts, gint64 dts)
 
 
 //遍历block拆分NALU,直到MaxSlice,不然一直遍历下去
-int process_block(guint8* pBlock, int BlockLen, int MaxSlice,  PsMuxContext* PsDst)
+int PsMuxContext::process_block(guint8* pBlock, int BlockLen, int MaxSlice)
 {
     static guint8* pStaticBuf = new guint8[BUF_LEN];
     static int StaticBufSize = 0;
@@ -105,7 +106,7 @@ int process_block(guint8* pBlock, int BlockLen, int MaxSlice,  PsMuxContext* PsD
     {
         if(isH264Or265Frame(pCurPos,NULL)){
             if (iSliceNum + 1 >= MaxSlice){//已经到达最大NALU个数,下面的不用找了把剩下的加上就是
-                PsDst->Process(pCurPos, LastBlockLen);
+                this->Process(pCurPos, LastBlockLen);
                 break;
             }
 
@@ -113,7 +114,7 @@ int process_block(guint8* pBlock, int BlockLen, int MaxSlice,  PsMuxContext* PsD
                 NaluStartPos = pCurPos;
             }
             else{
-                PsDst->Process(NaluStartPos, pCurPos-NaluStartPos);
+                this->Process(NaluStartPos, pCurPos-NaluStartPos);
                 iSliceNum++;
                 NaluStartPos = pCurPos;
             }
@@ -159,7 +160,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        process_block(fReadbuf, fReadsz, 0xffff, &psmuxcontext);
+        psmuxcontext.process_block(fReadbuf, fReadsz, 0xffff);
     }
 
     delete []fReadbuf;
