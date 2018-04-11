@@ -5,6 +5,64 @@
 
 #define BUF_LEN (1024*1024)
 
+
+// NALU单元
+typedef struct _ENC_NaluUnit
+{
+    int type;
+    int size;
+    char *data;
+}ENC_NaluUnit;
+
+
+#define BUFFER_SIZE  (1024*1024)
+
+
+
+int FindStartCode (char *Buf, int zeros_in_startcode)
+{
+    int info;
+    int i;
+
+    info = 1;
+    for (i = 0; i < zeros_in_startcode; i++)
+        if(Buf[i] != 0)
+            info = 0;
+
+    if(Buf[i] != 1)
+        info = 0;
+    return info;
+}
+
+int getNextNal(FILE* inpf, char* Buf)
+{
+    int pos = 0;
+    int StartCodeFound = 0;
+    int info2 = 0;
+    int info3 = 0;
+
+    while(!feof(inpf) && (Buf[pos++]=fgetc(inpf))==0);
+
+    while (!StartCodeFound)
+    {
+        if (feof (inpf))
+        {
+            //			return -1;
+            return pos-1;
+        }
+        Buf[pos++] = fgetc (inpf);
+        info3 = FindStartCode(&Buf[pos-4], 3);
+        if(info3 != 1)
+            info2 = FindStartCode(&Buf[pos-3], 2);
+        StartCodeFound = (info2 == 1 || info3 == 1);
+    }
+    fseek (inpf, -4, SEEK_CUR);
+    return pos - 4;
+}
+
+
+
+
 class PsMuxContext
 {
 public:
@@ -63,63 +121,20 @@ void PsMuxContext::Process(guint8* buf, int len, FILE *fp)
 //遍历block拆分NALU,直到MaxSlice,不然一直遍历下去
 int PsMuxContext::process_block(guint8* pBlock, int BlockLen, int MaxSlice, FILE *fp)
 {
-    static guint8* pStaticBuf = new guint8[BUF_LEN];
-    static int StaticBufSize = 0;
-
-    int LastBlockLen = 0;
-
-    memcpy(pStaticBuf+StaticBufSize, pBlock, BlockLen);
-
-    LastBlockLen = StaticBufSize+BlockLen;
-
-    guint8* pCurPos = pStaticBuf;
-
-    guint8* NaluStartPos = NULL;
-
-
-    //一段数据里最多NALU个数,这样SPS PPS 后的I帧那就不用遍历
-    int iSliceNum = 0;
-
-    while (LastBlockLen > 4)
-    {
-        if(isH264Or265Frame(pCurPos,NULL)){
-            if (iSliceNum + 1 >= MaxSlice){//已经到达最大NALU个数,下面的不用找了把剩下的加上就是
-                this->Process(pCurPos, LastBlockLen, fp);
-                break;
-            }
-
-            if (NaluStartPos == NULL){
-                NaluStartPos = pCurPos;
-            }
-            else{
-                this->Process(NaluStartPos, pCurPos-NaluStartPos, fp);
-                iSliceNum++;
-                NaluStartPos = pCurPos;
-            }
-        }
-
-        pCurPos++;
-        LastBlockLen--;
-    }
-
-    //有剩下的,保存,和后面的拼起来
-    if (NaluStartPos){
-        memcpy(pStaticBuf, NaluStartPos, LastBlockLen);
-        StaticBufSize = LastBlockLen;
-    }
+    this->Process(pBlock, BlockLen, fp);
     return 0;
 }
 
 int main(int argc, char* argv[])
 {
-    int Circle = 0;
-
+    char Buf[1024*40];
     FILE* fp = fopen(argv[1], "rb");
     if (fp == NULL)
     {
         printf("can't open file %s\n", argv[1]);
         return -1;
     }
+
 
     FILE *fpps = fopen("test.ps", "wb+");
     if (fpps == NULL)
@@ -128,26 +143,18 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    guint8* fReadbuf = new guint8[BUF_LEN];
     PsMuxContext psmuxcontext;
-    while(1) {
-        int fReadsz = fread(fReadbuf, 1, BUF_LEN, fp);
-
-        if(fReadsz <= 0){
-
-            if (Circle){
-                fseek(fp, 0, SEEK_SET);
-                continue;
-            }
-            else{
-                break;
-            }
-        }
-
-        psmuxcontext.process_block(fReadbuf, fReadsz, 0xffff, fpps);
+    int len;
+    while(!feof(fp))
+    {
+        len = getNextNal(fp, Buf);
+        printf("len %d\n", len);
+        fwrite(Buf, 1, len, fp);
+        psmuxcontext.process_block((guint8*)Buf, len, 0xffff, fpps);
     }
 
-    delete []fReadbuf;
+   fclose(fp);
+   fclose(fpps);
 
 	return 0;
 }
