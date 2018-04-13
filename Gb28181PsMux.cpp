@@ -7,7 +7,7 @@
 
 
 
-//´¦Àí¾ßÓÐÍ¬Ò»¸öÊ±¼ä´ÁµÄ¶à¸öÖ¡,±ÈÈçSPS PPS IÖ¡
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¬Ò»ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Ä¶ï¿½ï¿½Ö¡,ï¿½ï¿½ï¿½ï¿½SPS PPS IÖ¡
 struct MuxMultiFrameContext 
 {
     MuxMultiFrameContext():Idx(-1),
@@ -108,7 +108,7 @@ int Gb28181PsMux::MuxH265VpsSpsPpsIFrame(guint8* buf, int len, gint64 Pts, gint6
     context.MaxOutSize = maxOutSize;
     context.pMux = this;
     MuxBlock(buf, len, 4, &context);
-    if (pOutSize){//¼ÆËãÓÃÈ¥ÁË¶àÉÙ×Ö½Ú
+    if (pOutSize){//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¥ï¿½Ë¶ï¿½ï¿½ï¿½ï¿½Ö½ï¿½
         *pOutSize = context.OutBuf - outBuf;
     }
     return MUX_OK;
@@ -125,7 +125,7 @@ int Gb28181PsMux::MuxH264SpsPpsIFrame(guint8* buf, int len, gint64 Pts, gint64 D
     context.MaxOutSize = maxOutSize;
     context.pMux = this;
     MuxBlock(buf, len, 3, &context);
-    if (pOutSize){//¼ÆËãÓÃÈ¥ÁË¶àÉÙ×Ö½Ú
+    if (pOutSize){//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¥ï¿½Ë¶ï¿½ï¿½ï¿½ï¿½Ö½ï¿½
         *pOutSize = context.OutBuf - outBuf;
     }
     return MUX_OK;
@@ -177,7 +177,7 @@ int Gb28181PsMux::MuxH264SingleFrame(guint8* buf, int len, gint64 Pts, gint64 Dt
         }
     }
     else {
-		//Èç¹ûÊÇµ¥¸öSPS PPS ÔòµÈµ½IÖ¡Ò»Æð·¢ËÍ,Ô­Ôò¾ÍÊÇÍ¬Ò»¸öÊ±¼ä´Á×÷ÎªÒ»¸öRTP°ü
+		//ï¿½ï¿½ï¿½ï¿½Çµï¿½ï¿½ï¿½SPS PPS ï¿½ï¿½Èµï¿½IÖ¡Ò»ï¿½ï¿½ï¿½ï¿½,Ô­ï¿½ï¿½ï¿½ï¿½ï¿½Í¬Ò»ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ÎªÒ»ï¿½ï¿½RTPï¿½ï¿½
 		if (Type == NAL_SPS){
 	        m_PsMuxContext->enable_pack_hdr = 1;
 	        m_PsMuxContext->enable_psm = 1;
@@ -309,7 +309,7 @@ int Gb28181PsMux::MuxAudioFrame(guint8* buf, int len, gint64 Pts, gint64 Dts, St
     return MUX_OK;
 }
 
-//±éÀúblock²ð·ÖNALU,Ö±µ½MaxSlice,²»È»Ò»Ö±±éÀúÏÂÈ¥
+//ï¿½ï¿½ï¿½ï¿½blockï¿½ï¿½ï¿½NALU,Ö±ï¿½ï¿½MaxSlice,ï¿½ï¿½È»Ò»Ö±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¥
 int MuxBlock(guint8* pBlock, int BlockLen, int MaxSlice, MuxMultiFrameContext* pContext)
 {
     guint8* pCurPos = pBlock;
@@ -319,7 +319,7 @@ int MuxBlock(guint8* pBlock, int BlockLen, int MaxSlice, MuxMultiFrameContext* p
 
     if(pContext == NULL) return MUX_ERROR;
 
-    //Ò»¶ÎÊý¾ÝÀï×î¶àNALU¸öÊý,ÕâÑùSPS PPS ºóµÄIÖ¡ÄÇ¾Í²»ÓÃ±éÀú
+    //Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½NALUï¿½ï¿½ï¿½ï¿½,ï¿½ï¿½ï¿½ï¿½SPS PPS ï¿½ï¿½ï¿½IÖ¡ï¿½Ç¾Í²ï¿½ï¿½Ã±ï¿½ï¿½ï¿½
     int iSliceNum = 0;
 
     while (LastBlockLen > 4)
@@ -336,7 +336,7 @@ int MuxBlock(guint8* pBlock, int BlockLen, int MaxSlice, MuxMultiFrameContext* p
                 NaluStartPos = pCurPos;
             }
 
-            if (iSliceNum >= MaxSlice){//ÒÑ¾­µ½´ï×î´óNALU¸öÊý,ÏÂÃæµÄ²»ÓÃÕÒÁË°ÑÊ£ÏÂµÄ¼ÓÉÏ¾ÍÊÇ
+            if (iSliceNum >= MaxSlice){//ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½NALUï¿½ï¿½ï¿½ï¿½,ï¿½ï¿½ï¿½ï¿½Ä²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë°ï¿½Ê£ï¿½ÂµÄ¼ï¿½ï¿½Ï¾ï¿½ï¿½ï¿½
                 pContext->MuxOneOfMultiFrame(pCurPos, LastBlockLen);
                 break;
             }
@@ -349,7 +349,7 @@ int MuxBlock(guint8* pBlock, int BlockLen, int MaxSlice, MuxMultiFrameContext* p
     return MUX_OK;
 }
 
-//ÅÐ¶ÏÊÇ·ñÊÇ264»òÕß265Ö¡,Èç¹ûÊÇË³±ã°ÑNalTypeCharÉèÖÃÒ»ÏÂ
+//ï¿½Ð¶ï¿½ï¿½Ç·ï¿½ï¿½ï¿½264ï¿½ï¿½ï¿½ï¿½265Ö¡,ï¿½ï¿½ï¿½ï¿½ï¿½Ë³ï¿½ï¿½ï¿½NalTypeCharï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½
 bool isH264Or265Frame(guint8* buf, unsigned char* NalTypeChar)
 {
     bool bOk = false;

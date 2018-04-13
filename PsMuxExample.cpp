@@ -6,18 +6,12 @@
 #define BUF_LEN (1024*1024)
 
 
-// NALU单元
 typedef struct _ENC_NaluUnit
 {
     int type;
     int size;
     char *data;
 }ENC_NaluUnit;
-
-
-#define BUFFER_SIZE  (1024*1024)
-
-
 
 int FindStartCode (char *Buf, int zeros_in_startcode)
 {
@@ -47,7 +41,6 @@ int getNextNal(FILE* inpf, char* Buf)
     {
         if (feof (inpf))
         {
-            //			return -1;
             return pos-1;
         }
         Buf[pos++] = fgetc (inpf);
@@ -61,20 +54,19 @@ int getNextNal(FILE* inpf, char* Buf)
 }
 
 
-
-
 class PsMuxContext
 {
 public:
     PsMuxContext();
     ~PsMuxContext();
 
-    void Process(guint8* buf, int len, FILE *fp);
-    int  process_block(guint8* pBlock, int BlockLen, int MaxSlice, FILE *fp);
+    void ProcessVideo(guint8* buf, int len, FILE *fp);
+    void ProcessAudio(guint8* buf, int len, FILE *fp);
 
 private:
     Gb28181PsMux PsMux;
-    StreamIdx Idx;
+    StreamIdx vIdx;
+    StreamIdx aIdx;
     guint8* pMuxBuf;
     gint64 pts;
     gint64 dts;
@@ -84,9 +76,9 @@ private:
 
 PsMuxContext::PsMuxContext()
 {
-    Idx = PsMux.AddStream(PSMUX_ST_VIDEO_H264);
+    vIdx = PsMux.AddStream(PSMUX_ST_VIDEO_H264);
+    aIdx = PsMux.AddStream(PSMUX_ST_VIDEO_MPEG4);
     pMuxBuf = new guint8[BUF_LEN];
-
 }
 
 PsMuxContext::~PsMuxContext()
@@ -94,13 +86,12 @@ PsMuxContext::~PsMuxContext()
     delete []pMuxBuf;
 }
 
-void PsMuxContext::Process(guint8* buf, int len, FILE *fp)
+void PsMuxContext::ProcessVideo(guint8* buf, int len, FILE *fp)
 {
     int MuxOutSize = 0;
-    int ret = PsMux.MuxH264SingleFrame(buf, len, pts, dts, Idx, pMuxBuf, &MuxOutSize, BUF_LEN);
+    int ret = PsMux.MuxH264SingleFrame(buf, len, pts, dts, vIdx, pMuxBuf, &MuxOutSize, BUF_LEN);
 
     if (ret == 0 && MuxOutSize > 0){
-        printf("MuxOutSize %d\n", MuxOutSize);
         fwrite(pMuxBuf, MuxOutSize, 1, fp);
         fflush(fp);
     }
@@ -111,23 +102,31 @@ void PsMuxContext::Process(guint8* buf, int len, FILE *fp)
     }
 
     NAL_type Type = getH264NALtype(c);
-
     if ((Type == NAL_IDR) || (Type == NAL_PFRAME)){
         pts += 3600;
         dts += 3600;
     }
 }
 
-//遍历block拆分NALU,直到MaxSlice,不然一直遍历下去
-int PsMuxContext::process_block(guint8* pBlock, int BlockLen, int MaxSlice, FILE *fp)
+void PsMuxContext::ProcessAudio(guint8* buf, int len, FILE *fp)
 {
-    this->Process(pBlock, BlockLen, fp);
-    return 0;
+    int MuxOutSize = 0;
+    int ret = PsMux.MuxAudioFrame(buf, len, pts, dts, aIdx, pMuxBuf, &MuxOutSize, BUF_LEN);
+
+    if (ret == 0 && MuxOutSize > 0){
+        fwrite(pMuxBuf, MuxOutSize, 1, fp);
+        fflush(fp);
+    }
+
+    pts += 160;
+    dts += 160;
 }
+
 
 int main(int argc, char* argv[])
 {
     char Buf[1024*40];
+    char aBuf[1024];
     FILE* fp = fopen(argv[1], "rb");
     if (fp == NULL)
     {
@@ -135,9 +134,15 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-
     FILE *fpps = fopen("test.ps", "wb+");
     if (fpps == NULL)
+    {
+        printf("can't open file =\n");
+        return -1;
+    }
+
+    FILE *fpaac = fopen("song.aac", "rb");
+    if (fpaac == NULL)
     {
         printf("can't open file =\n");
         return -1;
@@ -148,9 +153,12 @@ int main(int argc, char* argv[])
     while(!feof(fp))
     {
         len = getNextNal(fp, Buf);
-        printf("len %d\n", len);
-        fwrite(Buf, 1, len, fp);
-        psmuxcontext.process_block((guint8*)Buf, len, 0xffff, fpps);
+        int ret= fread(aBuf, 1, 160, fpaac);
+        if(ret <= 0)
+            break;
+
+        psmuxcontext.ProcessVideo((guint8*)Buf, len, fpps);
+        psmuxcontext.ProcessAudio((guint8*)aBuf, ret, fpps);
     }
 
    fclose(fp);
